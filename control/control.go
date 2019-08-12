@@ -398,7 +398,7 @@ func (fcl *FCList)AcceptByMac(appid,macaddr string) error {
 	if ipaddr == ""{
 		return  errors.New("Client not found")
 	}
-	return fcl.Accept(appid,upmacaddr,ipaddr)
+	return fcl.Accept(appid,lomacaddr,ipaddr)
 }
 
 
