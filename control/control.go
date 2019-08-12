@@ -1,222 +1,201 @@
 package control
 
 import (
-	"sync"
 	"github.com/kprc/nbsnetwork/common/list"
-	"os"
+	"sync"
+	"github.com/coreos/go-iptables/iptables"
 	"log"
-	"bufio"
-	"io"
+	"github.com/kprc/flowsharectrl/config"
 	"strings"
-	"fmt"
+	"golang.org/x/tools/go/ssa/interp/testdata/src/os"
 )
 
-type DhcpLease struct {
-	MacAddress string
-	IpAddress string
-	HostName string
-	Hour     int
-	IsShare  bool
-	TotalUpBytes int64
-	TotalDownBytes int64
+type FlowControl struct {
+	AppId string			`json:"appid"`
+	MacAddr string			`json:"macaddr"`
+	IpAddr string			`json:"ipaddr"`
+	HostName string			`json:"hostname"`
+	IsShare bool			`json:"isshare"`
+	UpBytes int64			`json:"-"`
+	DownBytes int64			`json:"-"`
 }
 
-type keyinter interface {
-	GetMacAddress() string
-}
 
-type DhcpLeaseInter interface {
-	Accept(mac_addr string)
-	Deny(mac_addr string)
-	GetUpBytes(mac_addr string) int64
-	GetDownBytes(mac_addr string) int64
-	ReloadDhcpLease()
-	Print()
-}
-
-type DhcpleaseList struct {
+type FCList struct {
 	list.List
+	listrwlock sync.RWMutex
+	tbl *iptables.IPTables
+	tblLock sync.Mutex
+	cfg *config.FCLConfig
+	cfglock sync.Mutex
+}
+
+type FCInter interface {
+	InitIPTL()
+	Accept(appid,mac_addr,ipaddr string) error
+	AcceptByMac(appid,macaddr string) error
+	AcceptByIP(appid,ipaddr string) error
+	Deny(appid string)
+	GetUpBytes(appid string) int64
+	GetDownBytes(appid string) int64
+}
+
+type KeyInter interface {
+	GetKey() string
 }
 
 var (
-	dhcpleaseInst DhcpLeaseInter
-	dhcpleaseLock sync.Mutex
+	fcListInst FCInter
+	fcListInstLock sync.Mutex
 )
 
-func GetDhcpLeaseInst() DhcpLeaseInter {
-	if dhcpleaseInst == nil{
-		dhcpleaseLock.Lock()
-		defer dhcpleaseLock.Unlock()
-		if dhcpleaseInst == nil {
-			dhcpleaseInst = newDhcpLeaseInst()
-		}
-	}
+var (
+	gIPTTblNames = []string{"nat","filter","mangle","raw"}
+	gIPTDftChainNames = map[string]struct{}{
+	"PREROUTING": struct{}{},
+	"INPUT": struct{}{},
+	"FORWARD": struct{}{},
+	"OUTPUT": struct{}{},
+	"POSTROUTING": struct{}{}}
+)
 
-	return dhcpleaseInst
-
-}
-
-func getkey(v interface{}) string {
+func getKey(v interface{}) string  {
 	switch v.(type) {
 	case string:
 		return v.(string)
-	case keyinter:
-		return v.(keyinter).GetMacAddress()
+	default:
+		return v.(KeyInter).GetKey()
 
 	}
-
-	return ""
 }
 
-func newDhcpLeaseInst() DhcpLeaseInter {
-	l:= list.NewList(func(v1 interface{}, v2 interface{}) int {
-		d1,d2:=getkey(v1),getkey(v2)
-		if d1 == d2{
+
+func newFCList() *FCList {
+	l:=list.NewList(func(v1 interface{}, v2 interface{}) int {
+		k1,k2:=getKey(v1),getKey(v2)
+		if k1==k2{
 			return 0
-		}else{
-			return 1
+		}
+		return 1
+	})
+
+	return &FCList{List:l}
+}
+
+func GetFCListInst() FCInter  {
+	if fcListInst == nil{
+		fcListInstLock.Lock()
+		defer fcListInstLock.Unlock()
+
+		if fcListInst == nil{
+			fcListInst = newFCList()
 		}
 
-	})
-
-	dl:=&DhcpleaseList{List:l}
-
-
-	return dl
-}
-
-func (dl *DhcpLease)GetMacAddress() string  {
-	return dl.MacAddress
-}
-
-func (dl *DhcpleaseList)Accept(mac_addr string)  {
-	if v:=(*dl).Find(mac_addr);v==nil{
-		dl.ReloadDhcpLease()
 	}
 
-	_,err:=(*dl).FindDo(mac_addr, func(arg interface{}, v interface{}) (ret interface{}, err error) {
-		node:=v.(*DhcpLease)
-		node.IsShare = true
-
-		return nil,nil
-	})
-
-	if err == nil{
-		dl.applyIptables()
-	}
+	return fcListInst
 }
 
-func (dl *DhcpleaseList)Deny(mac_addr string)  {
-	if v:=(*dl).Find(mac_addr);v==nil{
+
+func (fc *FlowControl)GetKey() string  {
+	return fc.AppId
+}
+
+func (fcl *FCList)initApply()  {
+	defaultrules:=fcl.cfg.DefaultIPTRule
+
+	for _,dftrule:=range defaultrules{
+		if strings.TrimSpace(dftrule[2]) == "-A"{
+			fcl.tbl.Append(dftrule[1],dftrule[3],strings.Join(dftrule[4:]," "))
+		}
+		if strings.TrimSpace(dftrule[2]) == "-P"{
+			fcl.tbl.ChangePolicy(dftrule[1],dftrule[3],strings.Join(dftrule[4:]," "))
+		}
+		if strings.TrimSpace(dftrule[2]) == "-N"{
+			fcl.tbl.NewChain(dftrule[1],dftrule[3])
+		}
+	}
+
+	for _,rule:=range fcl.cfg.UserIPTRule{
+		fcl.tbl.Append(rule[1],rule[3],strings.Join(rule[4:]," "))
+	}
+
+}
+
+func (fcl *FCList)initTbl()  {
+	for _,tblname := range gIPTTblNames{
+		chains,err:=fcl.tbl.ListChains(tblname)
+		if err==nil{
+			for _,chain:=range chains{
+				fcl.tbl.ClearChain(tblname,chain)
+			}
+		}
+	}
+	for _,tblname := range gIPTTblNames{
+		chains,err:=fcl.tbl.ListChains(tblname)
+		if err==nil{
+			for _,chain:=range chains{
+				if _,ok:=gIPTDftChainNames[chain];!ok{
+					fcl.tbl.DeleteChain(tblname,chain)
+				}
+			}
+		}
+	}
+
+	fcl.cfglock.Lock()
+	defer fcl.cfglock.Unlock()
+
+	if fcl.cfg == nil{
+		fcl.cfg = &config.FCLConfig{}
+		if _,err:=fcl.cfg.Load();err!=nil{
+			log.Fatal("Load Config file error")
+			os.Exit(1)
+		}
+	}
+	fcl.initApply()
+}
+
+func (fcl *FCList)InitIPTL()  {
+	fcl.tblLock.Lock()
+	defer fcl.tblLock.Unlock()
+	if fcl.tbl != nil{
 		return
 	}
-	_,err:=(*dl).FindDo(mac_addr, func(arg interface{}, v interface{}) (ret interface{}, err error) {
-		node:=v.(*DhcpLease)
-		node.IsShare = false
 
-		return nil,nil
-	})
-	if err == nil{
-		dl.applyIptables()
+	var err error
+	if fcl.tbl,err = iptables.New();err!=nil{
+		log.Fatal("Can't Create iptables")
+		return
 	}
 
+	fcl.initTbl()
 }
 
-func (dl *DhcpleaseList)GetUpBytes(mac_addr string) int64 {
-	bytecnts,err:=(*dl).FindDo(mac_addr, func(arg interface{}, v interface{}) (ret interface{}, err error) {
-		node:=v.(*DhcpLease)
+func (fcl *FCList)Accept(appid,mac_addr,ipaddr string) error  {
 
-		return  node.TotalUpBytes,nil
-	})
-
-	if err!=nil{
-		return 0
-	}
-
-	if bytecnts == nil{
-		return 0
-	}
-
-	return bytecnts.(int64)
-
+	return nil
 }
 
-func (dl *DhcpleaseList)GetDownBytes(mac_addr string) int64  {
-	bytecnts,err:=(*dl).FindDo(mac_addr, func(arg interface{}, v interface{}) (ret interface{}, err error) {
-		node:=v.(*DhcpLease)
-		return  node.TotalDownBytes,nil
-	})
+func (fcl *FCList)AcceptByIP(appid,ipaddr string) error  {
 
-	if err!=nil{
-		return 0
-	}
-
-	if bytecnts == nil{
-		return 0
-	}
-
-	return bytecnts.(int64)
+	return nil
 }
 
-func (dl *DhcpleaseList)ReloadDhcpLease()  {
-	flag:=os.O_RDONLY
+func (fcl *FCList)AcceptByMac(appid,macaddr string) error {
 
-	if f,err:=os.OpenFile("/var/lib/misc/dnsmasq.leases",flag,0644);err!=nil{
-		log.Fatal("Can't open dnsmasq.leases")
-	}else{
-		//read line by line
-		dl.readlinebyline(f)
-		f.Close()
-	}
-
-}
-
-func (dl *DhcpleaseList)readlinebyline(file *os.File)  {
-	bf:=bufio.NewReader(file)
-	for{
-		if line,_,err := bf.ReadLine(); err!=nil{
-			if err == io.EOF{
-				break
-			}
-			if err == bufio.ErrBufferFull {
-				log.Fatal("Buffer full")
-				break
-			}
-			if len(line) > 0 {
-				//pending drop it
-				log.Fatal("Reading pending")
-				break
-			}
-		}else{
-			if len(line)>0{
-				info:=strings.Split(string(line)," ")
-				if len(info) < 4{
-					log.Fatal("error lease file")
-					break
-				}
-				mac_addr:=info[1]
-				if v:=(*dl).Find(mac_addr);v==nil{
-					node:=&DhcpLease{MacAddress:mac_addr,IpAddress:info[2],HostName:info[3]}
-					node.Hour = 12
-					(*dl).AddValue(node)
-				}
-			}
-		}
-	}
-}
-
-func (dl *DhcpleaseList)Print()  {
-	(*dl).Traverse("Node:  ======", func(arg interface{}, v interface{}) (ret interface{}, err error) {
-		fmt.Println(arg.(string))
-		node:=v.(*DhcpLease)
-		fmt.Println(node.MacAddress,node.IpAddress,node.HostName,node.IsShare,node.TotalUpBytes,node.TotalDownBytes)
-		return nil,nil
-	})
+	return nil
 }
 
 
-func (dl *DhcpleaseList)applyIptables()  {
+func (fcl *FCList)Deny(appid string)  {
 
 }
 
+func (fcl *FCList)GetUpBytes(appid string) int64  {
+	return 0
+}
+
+func (fcl *FCList)GetDownBytes(appid string) int64  {
+	return 0
+}
 
