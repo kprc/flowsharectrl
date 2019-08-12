@@ -31,6 +31,7 @@ type FCList struct {
 	tblLock sync.Mutex
 	cfg *config.FCLConfig
 	cfglock sync.Mutex
+	leaseFileLock sync.Mutex
 }
 
 type FCInter interface {
@@ -111,6 +112,9 @@ func (fcl *FCList)applyDel(fc *FlowControl) error  {
 
 	var err error
 
+	fcl.tblLock.Lock()
+	defer fcl.tblLock.Unlock()
+
 	if fc.MacAddr != ""{
 		err=fcl.tbl.Delete("filter",
 			fcl.cfg.MacAddressTBL,
@@ -138,6 +142,8 @@ func (fcl *FCList)applyDel(fc *FlowControl) error  {
 
 func (fcl *FCList)applyAppend(fc *FlowControl) error  {
 	var err error
+	fcl.tblLock.Lock()
+	defer fcl.tblLock.Unlock()
 	if fc.MacAddr != ""{
 		err = fcl.tbl.Append("filter",
 			fcl.cfg.MacAddressTBL,
@@ -165,6 +171,8 @@ func (fcl *FCList)applyAppend(fc *FlowControl) error  {
 func (fcl *FCList)getUPBytes(macaddr string) uint64  {
 	uppermacaddr:=strings.ToUpper(macaddr)
 
+	fcl.tblLock.Lock()
+	defer fcl.tblLock.Unlock()
 	if arrs,err:=fcl.tbl.StructuredStats("filter",fcl.cfg.MacAddressTBL);err!=nil{
 		return 0
 	}else{
@@ -179,6 +187,8 @@ func (fcl *FCList)getUPBytes(macaddr string) uint64  {
 }
 
 func (fcl *FCList)getDownByes(ipaddr string) uint64  {
+	fcl.tblLock.Lock()
+	defer fcl.tblLock.Unlock()
 	if arrs,err:=fcl.tbl.StructuredStats("filter",fcl.cfg.IPAddressTBL);err!=nil{
 		return 0
 	}else{
@@ -265,7 +275,17 @@ func (fcl *FCList)initIPTL()  {
 }
 
 func (fcl *FCList)recover()  {
-	//load from db, and apply all
+	iptdb:=GetIPTDBInstant()
+	cursor:=iptdb.DBIterator()
+
+	for {
+		k,fc:=iptdb.Next(cursor)
+		if k=="" || fc == nil{
+			break
+		}
+		fcl.AddValue(fc)
+		fcl.applyAppend(fc)
+	}
 }
 
 func (fcl *FCList)Accept(appid,mac_addr,ipaddr string) error  {
@@ -275,6 +295,9 @@ func (fcl *FCList)Accept(appid,mac_addr,ipaddr string) error  {
 
 	fc.MacAddr = strings.ToUpper(mac_addr)
 	fc.IpAddr = ipaddr
+
+	fcl.listrwlock.Lock()
+	defer fcl.listrwlock.Unlock()
 
 	r,err:=fcl.FindDo(fc, func(arg interface{}, v interface{}) (ret interface{}, err error) {
 		fc1:=arg.(*FlowControl)
@@ -305,7 +328,12 @@ func (fcl *FCList)Accept(appid,mac_addr,ipaddr string) error  {
 		fcl.applyAppend(fc)
 	}
 
-	//GetIPTDBInstant().DBUpdate()
+	iptbldb:=GetIPTDBInstant()
+	if _,err:=iptbldb.Find(appid);err!=nil{
+		iptbldb.DBInsert(appid,fc)
+	}else{
+		iptbldb.DBUpdate(appid,fc)
+	}
 
 
 	return nil
@@ -314,6 +342,9 @@ func (fcl *FCList)Accept(appid,mac_addr,ipaddr string) error  {
 func (fcl *FCList)AcceptByIP(appid,ipaddr string) error  {
 
 	var upmacaddr string
+
+	fcl.leaseFileLock.Lock()
+	defer fcl.leaseFileLock.Unlock()
 	//var hostname string
 	f,err:=os.OpenFile(fcl.cfg.DhcpLeaseFile,os.O_RDONLY,0644)
 	if err!=nil{
@@ -360,6 +391,8 @@ func (fcl *FCList)AcceptByIP(appid,ipaddr string) error  {
 func (fcl *FCList)AcceptByMac(appid,macaddr string) error {
 	lomacaddr:=strings.ToLower(macaddr)
 	var ipaddr string
+	fcl.leaseFileLock.Lock()
+	defer fcl.leaseFileLock.Unlock()
 
 	f,err:=os.OpenFile(fcl.cfg.DhcpLeaseFile,os.O_RDONLY,0644)
 	if err!=nil{
@@ -403,6 +436,8 @@ func (fcl *FCList)AcceptByMac(appid,macaddr string) error {
 
 
 func (fcl *FCList)Deny(appid string)  {
+	fcl.listrwlock.Lock()
+	defer fcl.listrwlock.Unlock()
 	r,err:=fcl.FindDo(appid, func(arg interface{}, v interface{}) (ret interface{}, err error) {
 		return v,nil
 	})
@@ -416,9 +451,15 @@ func (fcl *FCList)Deny(appid string)  {
 
 	fcl.DelValue(appid)
 
+	iptbldb:=GetIPTDBInstant()
+	iptbldb.DBDel(appid)
+
 }
 
 func (fcl *FCList)GetUpBytes(appid string) uint64  {
+
+	fcl.listrwlock.Lock()
+	defer fcl.listrwlock.Unlock()
 	r,err:=fcl.FindDo(appid, func(arg interface{}, v interface{}) (ret interface{}, err error) {
 		return v,nil
 	})
@@ -430,21 +471,15 @@ func (fcl *FCList)GetUpBytes(appid string) uint64  {
 	bytecnt:=fcl.getUPBytes(r.(*FlowControl).MacAddr)
 	r.(*FlowControl).UpBytes = bytecnt
 
-	//update
-	//
-	//fcl.FindDo(r, func(arg interface{}, v interface{}) (ret interface{}, err error) {
-	//	p1:=arg.(*FlowControl)
-	//	p2:=v.(*FlowControl)
-	//
-	//	p2.UpBytes = p1.UpBytes
-	//
-	//	return
-	//})
 
 	return bytecnt
 }
 
 func (fcl *FCList)GetDownBytes(appid string) uint64  {
+
+	fcl.listrwlock.Lock()
+	defer fcl.listrwlock.Unlock()
+
 	r,err:=fcl.FindDo(appid, func(arg interface{}, v interface{}) (ret interface{}, err error) {
 		return v,nil
 	})

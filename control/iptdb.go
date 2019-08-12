@@ -34,7 +34,7 @@ func newIptDb() *IptDb {
 		os.MkdirAll(fclrootdir,0755)
 	}
 
-	iptdb:=db.NewFileDb(path.Join(fclrootdir,"ipt.db"))
+	iptdb:=db.NewFileDb(path.Join(fclrootdir,"ipt.db")).Load()
 
 	return &IptDb{iptdb}
 }
@@ -103,4 +103,18 @@ func (id *IptDb)DBDel(appid string) (del *FlowControl, err error)  {
 	(*id).Delete(appid)
 
 	return
+}
+
+func (id *IptDb)Next(cusor *db.DBCusor) (k string,fc *FlowControl){
+	k,v:=cusor.Next()
+	if k==""{
+		return "",nil
+	}
+	fc = &FlowControl{}
+	err := json.Unmarshal([]byte(v),fc)
+	if err!=nil{
+		return "",nil
+	}
+
+	return k,fc
 }
