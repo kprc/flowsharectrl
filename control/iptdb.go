@@ -52,14 +52,55 @@ func GetIPTDBInstant() *IptDb {
 }
 
 func (id *IptDb)DBInsert(appid string,fc *FlowControl) error  {
-	if _,err:=id.Find(appid);err!=nil{
+	if _,err:=(*id).Find(appid);err==nil{
 		return err
 	}
 
 	if bfc,err:=json.Marshal(*fc);err!=nil{
 		return  err
 	}else{
-		return id.Insert(appid,string(bfc))
+		return (*id).Insert(appid,string(bfc))
 	}
 }
 
+
+func (id *IptDb)DBUpdate(appid string, fc *FlowControl) (old *FlowControl,err error){
+	var v string
+	v,err=(*id).Find(appid)
+	if  err!=nil{
+		return
+	}
+	old = &FlowControl{}
+	err = json.Unmarshal([]byte(v),old)
+	if err!=nil{
+		return
+	}
+
+	var bfc []byte
+	bfc,err=json.Marshal(*fc)
+	if err!=nil{
+		return
+	}
+
+	(*id).Update(appid,string(bfc))
+
+	return
+}
+
+func (id *IptDb)DBDel(appid string) (del *FlowControl, err error)  {
+	var v string
+	v,err=(*id).Find(appid)
+	if  err!=nil{
+		return
+	}
+
+	del = &FlowControl{}
+	err = json.Unmarshal([]byte(v),del)
+	if err!=nil{
+		return
+	}
+
+	(*id).Delete(appid)
+
+	return
+}
