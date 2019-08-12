@@ -21,6 +21,7 @@ type FCLConfig struct {
 	Save2File bool			`json:"save2file"`
 	MacAddressTBL string	`json:"macaddrtbl"`
 	IPAddressTBL 	string  `json:"ipaddrtbl"`
+	DhcpLeaseFile   string  `json:"dhcpleasefile"`
 }
 
 
@@ -95,6 +96,7 @@ func (fclc *FCLConfig)InitFCLConfig(laninterface,waninterface string, flag4g boo
 	fclc.Flag4g = flag4g
 	fclc.MacAddressTBL = "accept_mac_address"
 	fclc.IPAddressTBL = "accept_ip_address"
+	fclc.DhcpLeaseFile = "/var/lib/misc/dnsmasq.leases"
 
 	fclc.DefaultIPTRule = [][]string{
 		{"-t ","filter"," -P ","FORWARD"," DROP"},

@@ -7,7 +7,10 @@ import (
 	"log"
 	"github.com/kprc/flowsharectrl/config"
 	"strings"
-	"golang.org/x/tools/go/ssa/interp/testdata/src/os"
+	"os"
+	"bufio"
+	"io"
+	"github.com/pkg/errors"
 )
 
 type FlowControl struct {
@@ -310,12 +313,92 @@ func (fcl *FCList)Accept(appid,mac_addr,ipaddr string) error  {
 
 func (fcl *FCList)AcceptByIP(appid,ipaddr string) error  {
 
-	return nil
+	var upmacaddr string
+	//var hostname string
+	f,err:=os.OpenFile(fcl.cfg.DhcpLeaseFile,os.O_RDONLY,0644)
+	if err!=nil{
+		return err
+	}
+
+	bf:=bufio.NewReader(f)
+
+	for{
+		if line,_,err:=bf.ReadLine(); err!=nil{
+			if err == io.EOF {
+				break
+			}
+
+			if err == bufio.ErrBufferFull {
+				return errors.New("Buffer full")
+			}
+
+			if len(line) > 0 {
+				//pending drop it
+				return errors.New("Reading pending")
+			}
+		}else{
+			if len(line) > 0{
+				leasearr:=strings.Split(string(line)," ")
+				if len(leasearr) >3{
+					if ipaddr == leasearr[2]{
+						upmacaddr = strings.ToUpper(leasearr[1])
+						//hostname = leasearr[3]
+						break
+					}
+				}
+			}
+		}
+	}
+
+	if upmacaddr == ""{
+		return  errors.New("Client not found")
+	}
+
+	return fcl.Accept(appid,upmacaddr,ipaddr)
 }
 
 func (fcl *FCList)AcceptByMac(appid,macaddr string) error {
+	lomacaddr:=strings.ToLower(macaddr)
+	var ipaddr string
 
-	return nil
+	f,err:=os.OpenFile(fcl.cfg.DhcpLeaseFile,os.O_RDONLY,0644)
+	if err!=nil{
+		return err
+	}
+
+	bf:=bufio.NewReader(f)
+
+	for{
+		if line,_,err:=bf.ReadLine(); err!=nil{
+			if err == io.EOF {
+				break
+			}
+
+			if err == bufio.ErrBufferFull {
+				return errors.New("Buffer full")
+			}
+
+			if len(line) > 0 {
+				//pending drop it
+				return errors.New("Reading pending")
+			}
+		}else{
+			if len(line) > 0{
+				leasearr:=strings.Split(string(line)," ")
+				if len(leasearr) >3{
+					if lomacaddr == strings.ToLower(leasearr[1]){
+						ipaddr = leasearr[2]
+						break
+					}
+				}
+			}
+		}
+	}
+
+	if ipaddr == ""{
+		return  errors.New("Client not found")
+	}
+	return fcl.Accept(appid,upmacaddr,ipaddr)
 }
 
 
