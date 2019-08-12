@@ -16,8 +16,8 @@ type FlowControl struct {
 	IpAddr string			`json:"ipaddr"`
 	HostName string			`json:"hostname"`
 	IsShare bool			`json:"isshare"`
-	UpBytes int64			`json:"-"`
-	DownBytes int64			`json:"-"`
+	UpBytes uint64			`json:"-"`
+	DownBytes uint64			`json:"-"`
 }
 
 
@@ -31,13 +31,12 @@ type FCList struct {
 }
 
 type FCInter interface {
-	InitIPTL()
 	Accept(appid,mac_addr,ipaddr string) error
 	AcceptByMac(appid,macaddr string) error
 	AcceptByIP(appid,ipaddr string) error
 	Deny(appid string)
-	GetUpBytes(appid string) int64
-	GetDownBytes(appid string) int64
+	GetUpBytes(appid string) uint64
+	GetDownBytes(appid string) uint64
 }
 
 type KeyInter interface {
@@ -57,6 +56,7 @@ var (
 	"FORWARD": struct{}{},
 	"OUTPUT": struct{}{},
 	"POSTROUTING": struct{}{}}
+
 )
 
 func getKey(v interface{}) string  {
@@ -79,7 +79,10 @@ func newFCList() *FCList {
 		return 1
 	})
 
-	return &FCList{List:l}
+	fcl:= &FCList{List:l}
+	fcl.initIPTL()
+
+	return fcl
 }
 
 func GetFCListInst() FCInter  {
@@ -100,6 +103,92 @@ func GetFCListInst() FCInter  {
 func (fc *FlowControl)GetKey() string  {
 	return fc.AppId
 }
+
+func (fcl *FCList)applyDel(fc *FlowControl) error  {
+
+	var err error
+
+	if fc.MacAddr != ""{
+		err=fcl.tbl.Delete("filter",
+			fcl.cfg.MacAddressTBL,
+			"-m mac --mac-source ",fc.MacAddr," -j ACCEPT")
+		if err!=nil{
+			log.Println(err)
+		}
+
+	}
+
+	if fc.IpAddr != ""{
+		err1:=fcl.tbl.Delete("filter",
+			fcl.cfg.IPAddressTBL,
+			"-d ",fc.IpAddr," -j ACCEPT")
+		if err1!=nil{
+			log.Println(err1)
+		}
+		if err == nil{
+			err = err1
+		}
+	}
+
+	return err
+}
+
+func (fcl *FCList)applyAppend(fc *FlowControl) error  {
+	var err error
+	if fc.MacAddr != ""{
+		err = fcl.tbl.Append("filter",
+			fcl.cfg.MacAddressTBL,
+			"-m mac --mac-source",fc.MacAddr," -j ACCEPT")
+		if err!=nil{
+			log.Println(err)
+		}
+	}
+
+	if fc.IpAddr != ""{
+		err1:=fcl.tbl.Append("filter",fcl.cfg.IPAddressTBL,
+			"-d ",fc.IpAddr, " -j ACCEPT")
+		if err1!=nil{
+			log.Println(err1)
+			if err == nil{
+				err = err1
+			}
+		}
+	}
+
+
+	return err
+}
+
+func (fcl *FCList)getUPBytes(macaddr string) uint64  {
+	uppermacaddr:=strings.ToUpper(macaddr)
+
+	if arrs,err:=fcl.tbl.StructuredStats("filter",fcl.cfg.MacAddressTBL);err!=nil{
+		return 0
+	}else{
+		for _,s:=range arrs{
+			if s.Options[4:] == uppermacaddr{
+				return s.Bytes
+			}
+		}
+	}
+
+	return 0
+}
+
+func (fcl *FCList)getDownByes(ipaddr string) uint64  {
+	if arrs,err:=fcl.tbl.StructuredStats("filter",fcl.cfg.IPAddressTBL);err!=nil{
+		return 0
+	}else{
+		for _,s:=range arrs{
+			if s.Destination.IP.String() == ipaddr{
+				return s.Bytes
+			}
+		}
+	}
+
+	return 0
+}
+
 
 func (fcl *FCList)initApply()  {
 	defaultrules:=fcl.cfg.DefaultIPTRule
@@ -122,7 +211,7 @@ func (fcl *FCList)initApply()  {
 
 }
 
-func (fcl *FCList)initTbl()  {
+func (fcl *FCList)initApplyTbl()  {
 	for _,tblname := range gIPTTblNames{
 		chains,err:=fcl.tbl.ListChains(tblname)
 		if err==nil{
@@ -153,9 +242,10 @@ func (fcl *FCList)initTbl()  {
 		}
 	}
 	fcl.initApply()
+	fcl.recover()
 }
 
-func (fcl *FCList)InitIPTL()  {
+func (fcl *FCList)initIPTL()  {
 	fcl.tblLock.Lock()
 	defer fcl.tblLock.Unlock()
 	if fcl.tbl != nil{
@@ -168,10 +258,52 @@ func (fcl *FCList)InitIPTL()  {
 		return
 	}
 
-	fcl.initTbl()
+	fcl.initApplyTbl()
+}
+
+func (fcl *FCList)recover()  {
+	//load from db, and apply all
 }
 
 func (fcl *FCList)Accept(appid,mac_addr,ipaddr string) error  {
+	fc:=&FlowControl{}
+	fc.AppId = appid
+	fc.IsShare = true
+
+	fc.MacAddr = strings.ToUpper(mac_addr)
+	fc.IpAddr = ipaddr
+
+	r,err:=fcl.FindDo(fc, func(arg interface{}, v interface{}) (ret interface{}, err error) {
+		fc1:=arg.(*FlowControl)
+		fc2:=v.(*FlowControl)
+
+		if fc1.MacAddr == fc2.MacAddr && fc1.IpAddr == fc1.IpAddr{
+			return
+		}
+
+		fc3:=&FlowControl{}
+		*fc3=*fc2
+
+		*fc2=*fc1
+
+		ret = fc3
+
+		return
+	})
+	if err!=nil{
+		fcl.AddValue(fc)
+	}
+
+	if r!=nil{
+		fcl.applyDel(r.(*FlowControl))
+	}
+
+	if err!=nil || r!=nil{
+		fcl.applyAppend(fc)
+	}
+
+	//GetIPTDBInstant().DBUpdate()
+
 
 	return nil
 }
@@ -188,14 +320,60 @@ func (fcl *FCList)AcceptByMac(appid,macaddr string) error {
 
 
 func (fcl *FCList)Deny(appid string)  {
+	r,err:=fcl.FindDo(appid, func(arg interface{}, v interface{}) (ret interface{}, err error) {
+		return v,nil
+	})
+
+	if err!=nil{
+		return
+	}
+	if r!=nil{
+		fcl.applyDel(r.(*FlowControl))
+	}
+
+	fcl.DelValue(appid)
 
 }
 
-func (fcl *FCList)GetUpBytes(appid string) int64  {
-	return 0
+func (fcl *FCList)GetUpBytes(appid string) uint64  {
+	r,err:=fcl.FindDo(appid, func(arg interface{}, v interface{}) (ret interface{}, err error) {
+		return v,nil
+	})
+
+	if err!=nil{
+		return 0
+	}
+
+	bytecnt:=fcl.getUPBytes(r.(*FlowControl).MacAddr)
+	r.(*FlowControl).UpBytes = bytecnt
+
+	//update
+	//
+	//fcl.FindDo(r, func(arg interface{}, v interface{}) (ret interface{}, err error) {
+	//	p1:=arg.(*FlowControl)
+	//	p2:=v.(*FlowControl)
+	//
+	//	p2.UpBytes = p1.UpBytes
+	//
+	//	return
+	//})
+
+	return bytecnt
 }
 
-func (fcl *FCList)GetDownBytes(appid string) int64  {
-	return 0
+func (fcl *FCList)GetDownBytes(appid string) uint64  {
+	r,err:=fcl.FindDo(appid, func(arg interface{}, v interface{}) (ret interface{}, err error) {
+		return v,nil
+	})
+
+	if err!=nil{
+		return 0
+	}
+
+	bytecnt:=fcl.getDownByes(r.(*FlowControl).IpAddr)
+	r.(*FlowControl).DownBytes = bytecnt
+
+
+	return bytecnt
 }
 

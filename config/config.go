@@ -19,6 +19,8 @@ type FCLConfig struct {
 	DefaultIPTRule [][]string `json:"defaultiptrule"`
 	UserIPTRule [][]string `json:"useriptrule"`
 	Save2File bool			`json:"save2file"`
+	MacAddressTBL string	`json:"macaddrtbl"`
+	IPAddressTBL 	string  `json:"ipaddrtbl"`
 }
 
 
@@ -91,14 +93,16 @@ func (fclc *FCLConfig)InitFCLConfig(laninterface,waninterface string, flag4g boo
 	fclc.UPLink = waninterface
 	fclc.LocalNetInterface = laninterface
 	fclc.Flag4g = flag4g
+	fclc.MacAddressTBL = "accept_mac_address"
+	fclc.IPAddressTBL = "accept_ip_address"
 
 	fclc.DefaultIPTRule = [][]string{
 		{"-t ","filter"," -P ","FORWARD"," DROP"},
 		{"-t ","nat"," -A ","POSTROUTING"," -j ",waninterface},
-		{"-t ","filter"," -N ","accept_ip_address"},
-		{"-t ","filter"," -N ","accept_mac_address"},
-		{"-t ","filter"," -A ","FORWARD"," -i ",waninterface," -o ",laninterface," -j accept_ip_address"},
-		{"-t ","filter"," -A ","FORWARD"," -i ",laninterface," -o ",waninterface," -j accept_mac_address"},
+		{"-t ","filter"," -N ",fclc.IPAddressTBL},
+		{"-t ","filter"," -N ",fclc.MacAddressTBL},
+		{"-t ","filter"," -A ","FORWARD"," -i ",waninterface," -o ",laninterface," -j ",fclc.IPAddressTBL},
+		{"-t ","filter"," -A ","FORWARD"," -i ",laninterface," -o ",waninterface," -j ",fclc.MacAddressTBL},
 	}
 
 	fclc.UserIPTRule = make([][]string,0)
@@ -195,12 +199,12 @@ func (fclc *FCLConfig)AddUserIPTRule(rule []string) error {
 
 func (fclc *FCLConfig)AddUserIPTRule2(ipaddr,macaddr string) {
 	if ipaddr != ""{
-		rule:=[]string{"-t ","filter"," -A ","accept_ip_address"," -d ",ipaddr," -j ACCEPT"}
+		rule:=[]string{"-t ","filter"," -A ",fclc.IPAddressTBL," -d ",ipaddr," -j ACCEPT"}
 		fclc.AddUserIPTRule(rule)
 	}
 
 	if macaddr != ""{
-		rule :=[]string{"-t ","filter"," -A ","accept_mac_address"," -m mac --source-mac ",macaddr," -j ACCEPT"}
+		rule :=[]string{"-t ","filter"," -A ",fclc.MacAddressTBL," -m mac --source-mac ",macaddr," -j ACCEPT"}
 		fclc.AddUserIPTRule(rule)
 	}
 }
@@ -242,7 +246,7 @@ func (fclc *FCLConfig)DelUserIPTRule(rule []string) (int,error){
 
 func (fclc *FCLConfig)DelUserIPTRuleByIPAddr(ipaddr string) (int,error) {
 	if ipaddr != ""{
-		rule:=[]string{"-t ","filter"," -A ","accept_ip_address"," -d ",ipaddr," -j ACCEPT"}
+		rule:=[]string{"-t ","filter"," -A ",fclc.IPAddressTBL," -d ",ipaddr," -j ACCEPT"}
 		return fclc.DelUserIPTRule(rule)
 	}
 	return -1,errors.New("ipaddr is empty")
@@ -251,7 +255,7 @@ func (fclc *FCLConfig)DelUserIPTRuleByIPAddr(ipaddr string) (int,error) {
 
 func (fclc *FCLConfig)DelUserIPTRuleByMacAddr(macaddr string) (int,error) {
 	if macaddr!=""{
-		rule :=[]string{"-t ","filter"," -A ","accept_mac_address"," -m mac --source-mac ",macaddr," -j ACCEPT"}
+		rule :=[]string{"-t ","filter"," -A ",fclc.MacAddressTBL," -m mac --source-mac ",macaddr," -j ACCEPT"}
 		return  fclc.DelUserIPTRule(rule)
 	}
 	return -1,errors.New("macaddr is empty")
