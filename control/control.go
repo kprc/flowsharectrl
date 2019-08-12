@@ -255,7 +255,13 @@ func (fcl *FCList)initApplyTbl()  {
 		}
 	}
 	fcl.initApply()
-	fcl.recover()
+
+	if fcl.cfg.Save2File {
+		fcl.recover()
+	}
+
+	GetIPTDBInstant().Save()
+
 }
 
 func (fcl *FCList)initIPTL()  {

@@ -3,6 +3,7 @@ package main
 import (
 	"github.com/kprc/flowsharectrl/config"
 	"github.com/kprc/flowsharectrl/control"
+	"fmt"
 )
 
 func main()  {
@@ -38,9 +39,14 @@ func main()  {
 	}
 
 	fcl:=control.GetFCListInst()
-	fcl.Accept("aaa","mac","ip")
-	fcl.Deny("aaa")
-	fcl.GetDownBytes("aaa")
+	fcl.Accept("aaa","a0:88:b4:a3:d7:ac","172.168.100.171")
+	fcl.AcceptByIP("bbb","172.168.100.62")
+	fcl.AcceptByMac("ccc","8c:85:90:d1:70:f2")
+	//fcl.Deny("aaa")
+	fmt.Println(fcl.GetDownBytes("aaa"))
+	fmt.Println(fcl.GetDownBytes("bbb"))
+	fmt.Println(fcl.GetDownBytes("ccc"))
+
 
 
 
