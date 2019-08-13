@@ -12,18 +12,18 @@ import (
 )
 
 type FCLConfig struct {
-	DBFileName string `json:"dbfilename"`
-	UPLink string `json:"uplink"`
-	LocalNetInterface string `json:"localnetintf"`
-	Flag4g bool              `json:"flag4g"`
-	DefaultIPTRule [][]string `json:"defaultiptrule"`
-	UserIPTRule [][]string `json:"useriptrule"`
-	Save2File bool			`json:"save2file"`
-	MacAddressTBL string	`json:"macaddrtbl"`
-	IPAddressTBL 	string  `json:"ipaddrtbl"`
-	DhcpLeaseFile   string  `json:"dhcpleasefile"`
-	CmdListenPort int       `json:"cmdlistenport"`
-	CmdListenIP   string    `json:"cmdlistenip"`
+	DBFileName 			string 		`json:"dbfilename"`
+	UPLink 				string 		`json:"uplink"`
+	LocalNetInterface 	string 		`json:"localnetintf"`
+	Flag4g 				bool   		`json:"flag4g"`
+	DefaultIPTRule 		[][]string 	`json:"defaultiptrule"`
+	UserIPTRule 		[][]string 	`json:"useriptrule"`
+	Save2File 			bool		`json:"save2file"`
+	MacAddressTBL 		string		`json:"macaddrtbl"`
+	IPAddressTBL 		string  	`json:"ipaddrtbl"`
+	DhcpLeaseFile   	string  	`json:"dhcpleasefile"`
+	CmdListenPort 		int       	`json:"cmdlistenport"`
+	CmdListenIP   		string    	`json:"cmdlistenip"`
 }
 
 

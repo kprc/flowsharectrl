@@ -12,6 +12,7 @@ import (
 
 type IptDb struct {
 	db.NbsDbInter
+	cusor *db.DBCusor
 }
 
 var (
@@ -36,7 +37,7 @@ func newIptDb() *IptDb {
 
 	iptdb:=db.NewFileDb(path.Join(fclrootdir,"ipt.db")).Load()
 
-	return &IptDb{iptdb}
+	return &IptDb{NbsDbInter:iptdb}
 }
 
 func GetIPTDBInstant() *IptDb {
@@ -109,8 +110,15 @@ func (id *IptDb)DBSave()  {
 	(*id).Save()
 }
 
-func (id *IptDb)Next(cusor *db.DBCusor) (k string,fc *FlowControl){
-	k,v:=cusor.Next()
+func (id *IptDb)Iterator()  {
+	id.cusor = (*id).DBIterator()
+}
+
+func (id *IptDb)Next() (k string,fc *FlowControl){
+	if id.cusor == nil{
+		return
+	}
+	k,v:=id.cusor.Next()
 	if k==""{
 		return "",nil
 	}

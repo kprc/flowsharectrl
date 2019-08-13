@@ -15,13 +15,13 @@ import (
 )
 
 type FlowControl struct {
-	AppId string			`json:"appid"`
-	MacAddr string			`json:"macaddr"`
-	IpAddr string			`json:"ipaddr"`
-	HostName string			`json:"hostname"`
-	IsShare bool			`json:"isshare"`
-	UpBytes uint64			`json:"-"`
-	DownBytes uint64			`json:"-"`
+	AppId 		string			`json:"appid"`
+	MacAddr	 	string			`json:"macaddr"`
+	IpAddr 		string			`json:"ipaddr"`
+	HostName 	string			`json:"hostname"`
+	IsShare 	bool			`json:"isshare"`
+	UpBytes 	uint64			`json:"-"`
+	DownBytes 	uint64			`json:"-"`
 }
 
 
@@ -56,11 +56,11 @@ var (
 var (
 	gIPTTblNames = []string{"nat","filter","mangle","raw"}
 	gIPTDftChainNames = map[string]struct{}{
-	"PREROUTING": struct{}{},
-	"INPUT": struct{}{},
-	"FORWARD": struct{}{},
-	"OUTPUT": struct{}{},
-	"POSTROUTING": struct{}{}}
+			"PREROUTING": struct{}{},
+			"INPUT": struct{}{},
+			"FORWARD": struct{}{},
+			"OUTPUT": struct{}{},
+			"POSTROUTING": struct{}{}}
 
 )
 
