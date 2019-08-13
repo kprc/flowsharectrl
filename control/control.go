@@ -213,8 +213,8 @@ func (fcl *FCList)getDownByes(ipaddr string) uint64  {
 func (fcl *FCList)initApply()  {
 	defaultrules:=fcl.cfg.DefaultIPTRule
 
-	for idx,dftrule:=range defaultrules{
-		fmt.Println(idx,dftrule)
+	for _,dftrule:=range defaultrules{
+		//fmt.Println(idx,dftrule)
 		if strings.TrimSpace(dftrule[2]) == "-A"{
 			err:=fcl.tbl.Append(dftrule[1],dftrule[3],dftrule[4:]...)
 			fmt.Println(err)
@@ -229,8 +229,8 @@ func (fcl *FCList)initApply()  {
 		}
 	}
 
-	for idx,rule:=range fcl.cfg.UserIPTRule{
-		fmt.Println(idx,rule)
+	for _,rule:=range fcl.cfg.UserIPTRule{
+		//fmt.Println(idx,rule)
 		err:=fcl.tbl.Append(rule[1],rule[3],rule[4:]...)
 		fmt.Println(err)
 	}
@@ -243,7 +243,7 @@ func (fcl *FCList)initApplyTbl()  {
 		if err==nil{
 			for _,chain:=range chains{
 				fcl.tbl.ClearChain(tblname,chain)
-				fmt.Println("clear chain==>",tblname,chain)
+				//fmt.Println("clear chain==>",tblname,chain)
 			}
 		}
 	}
@@ -253,7 +253,7 @@ func (fcl *FCList)initApplyTbl()  {
 			for _,chain:=range chains{
 				if _,ok:=gIPTDftChainNames[chain];!ok{
 					fcl.tbl.DeleteChain(tblname,chain)
-					fmt.Println("delete chain==>",tblname,chain)
+					//fmt.Println("delete chain==>",tblname,chain)
 				}
 			}
 		}
