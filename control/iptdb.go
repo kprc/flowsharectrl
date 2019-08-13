@@ -105,6 +105,10 @@ func (id *IptDb)DBDel(appid string) (del *FlowControl, err error)  {
 	return
 }
 
+func (id *IptDb)DBSave()  {
+	(*id).Save()
+}
+
 func (id *IptDb)Next(cusor *db.DBCusor) (k string,fc *FlowControl){
 	k,v:=cusor.Next()
 	if k==""{

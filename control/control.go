@@ -217,22 +217,32 @@ func (fcl *FCList)initApply()  {
 		//fmt.Println(idx,dftrule)
 		if strings.TrimSpace(dftrule[2]) == "-A"{
 			err:=fcl.tbl.Append(dftrule[1],dftrule[3],dftrule[4:]...)
-			fmt.Println(err)
+			if err!=nil{
+				fmt.Println(err)
+			}
+
 		}
 		if strings.TrimSpace(dftrule[2]) == "-P"{
 			err:=fcl.tbl.ChangePolicy(dftrule[1],dftrule[3],strings.Join(dftrule[4:]," "))
-			fmt.Println(err)
+			if err!=nil{
+				fmt.Println(err)
+			}
 		}
 		if strings.TrimSpace(dftrule[2]) == "-N"{
 			err:=fcl.tbl.NewChain(dftrule[1],dftrule[3])
-			fmt.Println(err)
+			if err!=nil{
+				fmt.Println(err)
+			}
 		}
 	}
 
 	for _,rule:=range fcl.cfg.UserIPTRule{
 		//fmt.Println(idx,rule)
 		err:=fcl.tbl.Append(rule[1],rule[3],rule[4:]...)
-		fmt.Println(err)
+		if err!=nil{
+			fmt.Println(err)
+		}
+
 	}
 
 }
@@ -271,6 +281,7 @@ func (fcl *FCList)initApplyTbl()  {
 	}
 	fcl.initApply()
 
+	//fmt.Println("save2file: ",fcl.cfg.Save2File)
 	if fcl.cfg.Save2File {
 		fcl.recover()
 	}
@@ -304,6 +315,7 @@ func (fcl *FCList)recover()  {
 		if k=="" || fc == nil{
 			break
 		}
+		//fmt.Println(fc.AppId,fc.MacAddr,fc.IpAddr)
 		fcl.AddValue(fc)
 		fcl.applyAppendWithoutLock(fc)
 	}
