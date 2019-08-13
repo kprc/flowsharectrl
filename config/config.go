@@ -118,7 +118,7 @@ func (fclc *FCLConfig)InitFCLConfig(laninterface,waninterface string, flag4g boo
 
 
 func (fclc *FCLConfig)Load() (*FCLConfig,error) {
-	curdir,err:=os.Getwd()
+	curdir,err:=tools.Home()
 	if err!=nil{
 		log.Fatal("Can't get current directory")
 		os.Exit(1)
@@ -150,7 +150,7 @@ func (fclc *FCLConfig)Load() (*FCLConfig,error) {
 }
 
 func (fclc *FCLConfig)Save()  {
-	curdir,err:=os.Getwd()
+	curdir,err:=tools.Home()
 	if err!=nil{
 		log.Fatal("Can't get current directory")
 		os.Exit(1)
@@ -204,12 +204,16 @@ func (fclc *FCLConfig)AddUserIPTRule(rule []string) error {
 
 func (fclc *FCLConfig)AddUserIPTRule2(ipaddr,macaddr string) {
 	if ipaddr != ""{
-		rule:=[]string{"-t","filter","-A",fclc.IPAddressTBL,"-d",ipaddr,"-j","ACCEPT"}
+		rule:=[]string{"-t","filter","-A",
+			fclc.IPAddressTBL,"-d",
+			ipaddr,"-j","ACCEPT"}
 		fclc.AddUserIPTRule(rule)
 	}
 
 	if macaddr != ""{
-		rule :=[]string{"-t","filter","-A",fclc.MacAddressTBL,"-m","mac","--source-mac",macaddr,"-j","ACCEPT"}
+		rule :=[]string{"-t","filter","-A",
+			fclc.MacAddressTBL,"-m","mac","--source-mac",
+			macaddr,"-j","ACCEPT"}
 		fclc.AddUserIPTRule(rule)
 	}
 }
@@ -251,7 +255,9 @@ func (fclc *FCLConfig)DelUserIPTRule(rule []string) (int,error){
 
 func (fclc *FCLConfig)DelUserIPTRuleByIPAddr(ipaddr string) (int,error) {
 	if ipaddr != ""{
-		rule:=[]string{"-t","filter","-A",fclc.IPAddressTBL,"-d",ipaddr,"-j","ACCEPT"}
+		rule:=[]string{"-t","filter","-A",
+			fclc.IPAddressTBL,"-d",
+			ipaddr,"-j","ACCEPT"}
 		return fclc.DelUserIPTRule(rule)
 	}
 	return -1,errors.New("ipaddr is empty")
@@ -260,7 +266,9 @@ func (fclc *FCLConfig)DelUserIPTRuleByIPAddr(ipaddr string) (int,error) {
 
 func (fclc *FCLConfig)DelUserIPTRuleByMacAddr(macaddr string) (int,error) {
 	if macaddr!=""{
-		rule :=[]string{"-t","filter","-A",fclc.MacAddressTBL,"-m","mac","--source-mac",macaddr,"-j","ACCEPT"}
+		rule :=[]string{"-t","filter","-A",
+			fclc.MacAddressTBL,"-m","mac","--source-mac",
+			macaddr,"-j","ACCEPT"}
 		return  fclc.DelUserIPTRule(rule)
 	}
 	return -1,errors.New("macaddr is empty")

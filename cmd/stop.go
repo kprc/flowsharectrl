@@ -37,7 +37,9 @@ var stopCmd = &cobra.Command{
 			log.Println("nbsfc not started")
 		}
 
-		
+
+
+
 	},
 }
 
