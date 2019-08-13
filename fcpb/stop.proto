@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package rpccmdservice;
+
+import "defaultcmd.proto";
+
+service defaultnbssasrv {
+    rpc DefaultNbsFC (DefaultRequest) returns (DefaultResp) {}
+}
+

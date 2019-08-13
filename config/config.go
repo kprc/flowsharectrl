@@ -22,6 +22,8 @@ type FCLConfig struct {
 	MacAddressTBL string	`json:"macaddrtbl"`
 	IPAddressTBL 	string  `json:"ipaddrtbl"`
 	DhcpLeaseFile   string  `json:"dhcpleasefile"`
+	CmdListenPort int       `json:"cmdlistenport"`
+	CmdListenIP   string    `json:"cmdlistenip"`
 }
 
 
@@ -97,6 +99,8 @@ func (fclc *FCLConfig)InitFCLConfig(laninterface,waninterface string, flag4g boo
 	fclc.MacAddressTBL = "accept_mac_address"
 	fclc.IPAddressTBL = "accept_ip_address"
 	fclc.DhcpLeaseFile = "/var/lib/misc/dnsmasq.leases"
+	fclc.CmdListenPort = 9527
+	fclc.CmdListenIP = "127.0.0.1"
 
 	fclc.DefaultIPTRule = [][]string{
 		{"-t ","filter","-P","FORWARD","DROP"},

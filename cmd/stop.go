@@ -15,23 +15,29 @@
 package cmd
 
 import (
-	"fmt"
-
 	"github.com/spf13/cobra"
+	"github.com/kprc/flowsharectrl/config"
+	"log"
+	"github.com/kprc/nbsnetwork/tools"
 )
 
 // stopCmd represents the stop command
 var stopCmd = &cobra.Command{
 	Use:   "stop",
-	Short: "A brief description of your command",
-	Long: `A longer description that spans multiple lines and likely contains examples
-and usage of using your command. For example:
-
-Cobra is a CLI library for Go that empowers applications.
-This application is a tool to generate the needed files
-to quickly create a Cobra application.`,
+	Short: "stop a nbsfc daemon",
+	Long: `stop a nbsfc daemon`,
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("stop called")
+		cfg :=&config.FCLConfig{}
+		if _,err:=cfg.Load();err!=nil{
+			log.Println("Please Initialize First")
+			return
+		}
+
+		if !tools.CheckPortUsed("tcp",uint16(cfg.CmdListenPort)){
+			log.Println("nbsfc not started")
+		}
+
+		
 	},
 }
 
