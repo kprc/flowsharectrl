@@ -11,6 +11,7 @@ import (
 	"bufio"
 	"io"
 	"github.com/pkg/errors"
+	"fmt"
 )
 
 type FlowControl struct {
@@ -118,7 +119,7 @@ func (fcl *FCList)applyDel(fc *FlowControl) error  {
 	if fc.MacAddr != ""{
 		err=fcl.tbl.Delete("filter",
 			fcl.cfg.MacAddressTBL,
-			"-m mac --mac-source ",fc.MacAddr," -j ACCEPT")
+			"-m","mac","--mac-source",fc.MacAddr,"-j","ACCEPT")
 		if err!=nil{
 			log.Println(err)
 		}
@@ -128,7 +129,7 @@ func (fcl *FCList)applyDel(fc *FlowControl) error  {
 	if fc.IpAddr != ""{
 		err1:=fcl.tbl.Delete("filter",
 			fcl.cfg.IPAddressTBL,
-			"-d ",fc.IpAddr," -j ACCEPT")
+			"-d",fc.IpAddr,"-j","ACCEPT")
 		if err1!=nil{
 			log.Println(err1)
 		}
@@ -141,13 +142,19 @@ func (fcl *FCList)applyDel(fc *FlowControl) error  {
 }
 
 func (fcl *FCList)applyAppend(fc *FlowControl) error  {
-	var err error
+
 	fcl.tblLock.Lock()
 	defer fcl.tblLock.Unlock()
+
+	return fcl.applyAppendWithoutLock(fc)
+}
+
+func (fcl *FCList)applyAppendWithoutLock(fc *FlowControl) error    {
+	var err error
 	if fc.MacAddr != ""{
 		err = fcl.tbl.Append("filter",
 			fcl.cfg.MacAddressTBL,
-			"-m mac --mac-source",fc.MacAddr," -j ACCEPT")
+			"-m","mac","--mac-source",fc.MacAddr,"-j","ACCEPT")
 		if err!=nil{
 			log.Println(err)
 		}
@@ -155,7 +162,7 @@ func (fcl *FCList)applyAppend(fc *FlowControl) error  {
 
 	if fc.IpAddr != ""{
 		err1:=fcl.tbl.Append("filter",fcl.cfg.IPAddressTBL,
-			"-d ",fc.IpAddr, " -j ACCEPT")
+			"-d",fc.IpAddr, "-j","ACCEPT")
 		if err1!=nil{
 			log.Println(err1)
 			if err == nil{
@@ -206,20 +213,26 @@ func (fcl *FCList)getDownByes(ipaddr string) uint64  {
 func (fcl *FCList)initApply()  {
 	defaultrules:=fcl.cfg.DefaultIPTRule
 
-	for _,dftrule:=range defaultrules{
+	for idx,dftrule:=range defaultrules{
+		fmt.Println(idx,dftrule)
 		if strings.TrimSpace(dftrule[2]) == "-A"{
-			fcl.tbl.Append(dftrule[1],dftrule[3],strings.Join(dftrule[4:]," "))
+			err:=fcl.tbl.Append(dftrule[1],dftrule[3],dftrule[4:]...)
+			fmt.Println(err)
 		}
 		if strings.TrimSpace(dftrule[2]) == "-P"{
-			fcl.tbl.ChangePolicy(dftrule[1],dftrule[3],strings.Join(dftrule[4:]," "))
+			err:=fcl.tbl.ChangePolicy(dftrule[1],dftrule[3],strings.Join(dftrule[4:]," "))
+			fmt.Println(err)
 		}
 		if strings.TrimSpace(dftrule[2]) == "-N"{
-			fcl.tbl.NewChain(dftrule[1],dftrule[3])
+			err:=fcl.tbl.NewChain(dftrule[1],dftrule[3])
+			fmt.Println(err)
 		}
 	}
 
-	for _,rule:=range fcl.cfg.UserIPTRule{
-		fcl.tbl.Append(rule[1],rule[3],strings.Join(rule[4:]," "))
+	for idx,rule:=range fcl.cfg.UserIPTRule{
+		fmt.Println(idx,rule)
+		err:=fcl.tbl.Append(rule[1],rule[3],rule[4:]...)
+		fmt.Println(err)
 	}
 
 }
@@ -230,6 +243,7 @@ func (fcl *FCList)initApplyTbl()  {
 		if err==nil{
 			for _,chain:=range chains{
 				fcl.tbl.ClearChain(tblname,chain)
+				fmt.Println("clear chain==>",tblname,chain)
 			}
 		}
 	}
@@ -239,6 +253,7 @@ func (fcl *FCList)initApplyTbl()  {
 			for _,chain:=range chains{
 				if _,ok:=gIPTDftChainNames[chain];!ok{
 					fcl.tbl.DeleteChain(tblname,chain)
+					fmt.Println("delete chain==>",tblname,chain)
 				}
 			}
 		}
@@ -290,7 +305,7 @@ func (fcl *FCList)recover()  {
 			break
 		}
 		fcl.AddValue(fc)
-		fcl.applyAppend(fc)
+		fcl.applyAppendWithoutLock(fc)
 	}
 }
 

@@ -34,7 +34,7 @@ func main()  {
 
 	fclc:=&config.FCLConfig{}
 	if _,err:=fclc.Load();err!=nil{
-		fclc.InitFCLConfig("","",true)
+		fclc.InitFCLConfig("","",false)
 		fclc.Save()
 	}
 

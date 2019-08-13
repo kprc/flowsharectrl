@@ -66,7 +66,7 @@ func getDefaultLocalLanInterface() string {
 func getDefaultEthUpLink() string {
 	ifs:=getInterfaceLocal()
 	for _,nif:=range ifs{
-		if strings.Contains(nif,"enx"){
+		if strings.Contains(nif,"enx") || strings.Contains(nif,"eth"){
 			return nif
 		}
 	}
@@ -99,12 +99,12 @@ func (fclc *FCLConfig)InitFCLConfig(laninterface,waninterface string, flag4g boo
 	fclc.DhcpLeaseFile = "/var/lib/misc/dnsmasq.leases"
 
 	fclc.DefaultIPTRule = [][]string{
-		{"-t ","filter"," -P ","FORWARD"," DROP"},
-		{"-t ","nat"," -A ","POSTROUTING"," -j ",waninterface},
-		{"-t ","filter"," -N ",fclc.IPAddressTBL},
-		{"-t ","filter"," -N ",fclc.MacAddressTBL},
-		{"-t ","filter"," -A ","FORWARD"," -i ",waninterface," -o ",laninterface," -j ",fclc.IPAddressTBL},
-		{"-t ","filter"," -A ","FORWARD"," -i ",laninterface," -o ",waninterface," -j ",fclc.MacAddressTBL},
+		{"-t ","filter","-P","FORWARD","DROP"},
+		{"-t ","nat","-A","POSTROUTING","-o",waninterface,"-j","MASQUERADE"},
+		{"-t ","filter","-N",fclc.IPAddressTBL},
+		{"-t ","filter","-N",fclc.MacAddressTBL},
+		{"-t ","filter","-A","FORWARD","-i",waninterface,"-o",laninterface,"-j",fclc.IPAddressTBL},
+		{"-t ","filter","-A","FORWARD","-i",laninterface,"-o",waninterface,"-j",fclc.MacAddressTBL},
 	}
 
 	fclc.UserIPTRule = make([][]string,0)
@@ -160,7 +160,7 @@ func (fclc *FCLConfig)Save()  {
 
 	var bcfg []byte
 
-	bcfg,err=json.Marshal(fclc)
+	bcfg,err=json.MarshalIndent(fclc,"","\t")
 	if err!=nil{
 		log.Fatal("Can't Save Config File")
 		os.Exit(1)
