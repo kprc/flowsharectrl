@@ -167,7 +167,6 @@ func (fclc *FCLConfig)Save()  {
 	}
 
 	tools.Save2File(bcfg,path.Join(fclrootdir,"fcl.config"))
-
 }
 
 
@@ -201,12 +200,12 @@ func (fclc *FCLConfig)AddUserIPTRule(rule []string) error {
 
 func (fclc *FCLConfig)AddUserIPTRule2(ipaddr,macaddr string) {
 	if ipaddr != ""{
-		rule:=[]string{"-t ","filter"," -A ",fclc.IPAddressTBL," -d ",ipaddr," -j ACCEPT"}
+		rule:=[]string{"-t","filter","-A",fclc.IPAddressTBL,"-d",ipaddr,"-j","ACCEPT"}
 		fclc.AddUserIPTRule(rule)
 	}
 
 	if macaddr != ""{
-		rule :=[]string{"-t ","filter"," -A ",fclc.MacAddressTBL," -m mac --source-mac ",macaddr," -j ACCEPT"}
+		rule :=[]string{"-t","filter","-A",fclc.MacAddressTBL,"-m","mac","--source-mac",macaddr,"-j","ACCEPT"}
 		fclc.AddUserIPTRule(rule)
 	}
 }
@@ -248,7 +247,7 @@ func (fclc *FCLConfig)DelUserIPTRule(rule []string) (int,error){
 
 func (fclc *FCLConfig)DelUserIPTRuleByIPAddr(ipaddr string) (int,error) {
 	if ipaddr != ""{
-		rule:=[]string{"-t ","filter"," -A ",fclc.IPAddressTBL," -d ",ipaddr," -j ACCEPT"}
+		rule:=[]string{"-t","filter","-A",fclc.IPAddressTBL,"-d",ipaddr,"-j","ACCEPT"}
 		return fclc.DelUserIPTRule(rule)
 	}
 	return -1,errors.New("ipaddr is empty")
@@ -257,7 +256,7 @@ func (fclc *FCLConfig)DelUserIPTRuleByIPAddr(ipaddr string) (int,error) {
 
 func (fclc *FCLConfig)DelUserIPTRuleByMacAddr(macaddr string) (int,error) {
 	if macaddr!=""{
-		rule :=[]string{"-t ","filter"," -A ",fclc.MacAddressTBL," -m mac --source-mac ",macaddr," -j ACCEPT"}
+		rule :=[]string{"-t","filter","-A",fclc.MacAddressTBL,"-m","mac","--source-mac",macaddr,"-j","ACCEPT"}
 		return  fclc.DelUserIPTRule(rule)
 	}
 	return -1,errors.New("macaddr is empty")
