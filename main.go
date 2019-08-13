@@ -16,12 +16,11 @@ package main
 
 import "github.com/kprc/flowsharectrl/cmd"
 
-var(
-	Build string
-	Version string
+var (
+	Build     string
+	Version   string
 	BuildTime string
 )
-
 
 func main() {
 	cmd.Version = Version
@@ -29,4 +28,3 @@ func main() {
 	cmd.Build = Build
 	cmd.Execute()
 }
-
