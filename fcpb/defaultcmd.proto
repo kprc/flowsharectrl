@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package rpccmdservice;
+
+
+message DefaultRequest{
+    int32 reqid = 1;
+}
+
+message DefaultRequestMsg{
+    string message = 1;
+}
+
+message DefaultResp{
+    string message = 1;
+}

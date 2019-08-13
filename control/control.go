@@ -36,12 +36,12 @@ type FCList struct {
 }
 
 type FCInter interface {
-	Accept(appid,mac_addr,ipaddr string) error
-	AcceptByMac(appid,macaddr string) error
-	AcceptByIP(appid,ipaddr string) error
-	Deny(appid string)
-	GetUpBytes(appid string) uint64
-	GetDownBytes(appid string) uint64
+	Accept(appID,macAddr,ipAddr string) error
+	AcceptByMac(appID,macAddr string) error
+	AcceptByIP(appID,ipAddr string) error
+	Deny(appID string)
+	GetUpBytes(appID string) uint64
+	GetDownBytes(appID string) uint64
 }
 
 type KeyInter interface {
@@ -321,13 +321,13 @@ func (fcl *FCList)recover()  {
 	}
 }
 
-func (fcl *FCList)Accept(appid,mac_addr,ipaddr string) error  {
+func (fcl *FCList)Accept(appID,macAddr,ipAddr string) error  {
 	fc:=&FlowControl{}
-	fc.AppId = appid
+	fc.AppId = appID
 	fc.IsShare = true
 
-	fc.MacAddr = strings.ToUpper(mac_addr)
-	fc.IpAddr = ipaddr
+	fc.MacAddr = strings.ToUpper(macAddr)
+	fc.IpAddr = ipAddr
 
 	fcl.listrwlock.Lock()
 	defer fcl.listrwlock.Unlock()
@@ -362,17 +362,17 @@ func (fcl *FCList)Accept(appid,mac_addr,ipaddr string) error  {
 	}
 
 	iptbldb:=GetIPTDBInstant()
-	if _,err:=iptbldb.Find(appid);err!=nil{
-		iptbldb.DBInsert(appid,fc)
+	if _,err:=iptbldb.Find(appID);err!=nil{
+		iptbldb.DBInsert(appID,fc)
 	}else{
-		iptbldb.DBUpdate(appid,fc)
+		iptbldb.DBUpdate(appID,fc)
 	}
 
 
 	return nil
 }
 
-func (fcl *FCList)AcceptByIP(appid,ipaddr string) error  {
+func (fcl *FCList)AcceptByIP(appID,ipAddr string) error  {
 
 	var upmacaddr string
 
@@ -404,7 +404,7 @@ func (fcl *FCList)AcceptByIP(appid,ipaddr string) error  {
 			if len(line) > 0{
 				leasearr:=strings.Split(string(line)," ")
 				if len(leasearr) >3{
-					if ipaddr == leasearr[2]{
+					if ipAddr == leasearr[2]{
 						upmacaddr = strings.ToUpper(leasearr[1])
 						//hostname = leasearr[3]
 						break
@@ -418,11 +418,11 @@ func (fcl *FCList)AcceptByIP(appid,ipaddr string) error  {
 		return  errors.New("Client not found")
 	}
 
-	return fcl.Accept(appid,upmacaddr,ipaddr)
+	return fcl.Accept(appID,upmacaddr,ipAddr)
 }
 
-func (fcl *FCList)AcceptByMac(appid,macaddr string) error {
-	lomacaddr:=strings.ToLower(macaddr)
+func (fcl *FCList)AcceptByMac(appID,macAddr string) error {
+	lomacaddr:=strings.ToLower(macAddr)
 	var ipaddr string
 	fcl.leaseFileLock.Lock()
 	defer fcl.leaseFileLock.Unlock()
@@ -464,14 +464,14 @@ func (fcl *FCList)AcceptByMac(appid,macaddr string) error {
 	if ipaddr == ""{
 		return  errors.New("Client not found")
 	}
-	return fcl.Accept(appid,lomacaddr,ipaddr)
+	return fcl.Accept(macAddr,lomacaddr,ipaddr)
 }
 
 
-func (fcl *FCList)Deny(appid string)  {
+func (fcl *FCList)Deny(appID string)  {
 	fcl.listrwlock.Lock()
 	defer fcl.listrwlock.Unlock()
-	r,err:=fcl.FindDo(appid, func(arg interface{}, v interface{}) (ret interface{}, err error) {
+	r,err:=fcl.FindDo(appID, func(arg interface{}, v interface{}) (ret interface{}, err error) {
 		return v,nil
 	})
 
@@ -482,18 +482,18 @@ func (fcl *FCList)Deny(appid string)  {
 		fcl.applyDel(r.(*FlowControl))
 	}
 
-	fcl.DelValue(appid)
+	fcl.DelValue(appID)
 
 	iptbldb:=GetIPTDBInstant()
-	iptbldb.DBDel(appid)
+	iptbldb.DBDel(appID)
 
 }
 
-func (fcl *FCList)GetUpBytes(appid string) uint64  {
+func (fcl *FCList)GetUpBytes(appID string) uint64  {
 
 	fcl.listrwlock.Lock()
 	defer fcl.listrwlock.Unlock()
-	r,err:=fcl.FindDo(appid, func(arg interface{}, v interface{}) (ret interface{}, err error) {
+	r,err:=fcl.FindDo(appID, func(arg interface{}, v interface{}) (ret interface{}, err error) {
 		return v,nil
 	})
 
@@ -508,12 +508,12 @@ func (fcl *FCList)GetUpBytes(appid string) uint64  {
 	return bytecnt
 }
 
-func (fcl *FCList)GetDownBytes(appid string) uint64  {
+func (fcl *FCList)GetDownBytes(appID string) uint64  {
 
 	fcl.listrwlock.Lock()
 	defer fcl.listrwlock.Unlock()
 
-	r,err:=fcl.FindDo(appid, func(arg interface{}, v interface{}) (ret interface{}, err error) {
+	r,err:=fcl.FindDo(appID, func(arg interface{}, v interface{}) (ret interface{}, err error) {
 		return v,nil
 	})
 
