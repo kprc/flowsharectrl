@@ -9,6 +9,7 @@ import (
 	"path"
 	"encoding/json"
 	"github.com/pkg/errors"
+	"sync"
 )
 
 type FCLConfig struct {
@@ -24,6 +25,35 @@ type FCLConfig struct {
 	DhcpLeaseFile   	string  	`json:"dhcpleasefile"`
 	CmdListenPort 		int       	`json:"cmdlistenport"`
 	CmdListenIP   		string    	`json:"cmdlistenip"`
+}
+
+var (
+	fclConfigInst *FCLConfig
+	fclConfigInstLock sync.Mutex
+)
+
+func GetConfigInstance() *FCLConfig  {
+	if fclConfigInst == nil{
+		log.Fatal("Please Initialize the Config")
+		return nil
+	}
+	return fclConfigInst
+}
+
+func GetConfigInstanceByParam(ilan,iwan string,flag4g bool) *FCLConfig {
+	if fclConfigInst == nil{
+		fclConfigInstLock.Lock()
+		defer fclConfigInstLock.Unlock()
+		if fclConfigInst == nil{
+			fc := &FCLConfig{}
+			if _,err:=fc.Load();err!=nil{
+				fc.InitFCLConfig(ilan,iwan,flag4g)
+				fc.Save()
+			}
+			fclConfigInst = fc
+		}
+	}
+	return nil
 }
 
 

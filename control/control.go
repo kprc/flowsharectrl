@@ -273,11 +273,7 @@ func (fcl *FCList)initApplyTbl()  {
 	defer fcl.cfglock.Unlock()
 
 	if fcl.cfg == nil{
-		fcl.cfg = &config.FCLConfig{}
-		if _,err:=fcl.cfg.Load();err!=nil{
-			log.Fatal("Load Config file error")
-			os.Exit(1)
-		}
+		fcl.cfg = config.GetConfigInstance()
 	}
 	fcl.initApply()
 
@@ -308,10 +304,10 @@ func (fcl *FCList)initIPTL()  {
 
 func (fcl *FCList)recover()  {
 	iptdb:=GetIPTDBInstant()
-	cursor:=iptdb.DBIterator()
+	iptdb.Iterator()
 
 	for {
-		k,fc:=iptdb.Next(cursor)
+		k,fc:=iptdb.Next()
 		if k=="" || fc == nil{
 			break
 		}
@@ -325,7 +321,6 @@ func (fcl *FCList)Accept(appID,macAddr,ipAddr string) error  {
 	fc:=&FlowControl{}
 	fc.AppId = appID
 	fc.IsShare = true
-
 	fc.MacAddr = strings.ToUpper(macAddr)
 	fc.IpAddr = ipAddr
 
@@ -335,18 +330,13 @@ func (fcl *FCList)Accept(appID,macAddr,ipAddr string) error  {
 	r,err:=fcl.FindDo(fc, func(arg interface{}, v interface{}) (ret interface{}, err error) {
 		fc1:=arg.(*FlowControl)
 		fc2:=v.(*FlowControl)
-
 		if fc1.MacAddr == fc2.MacAddr && fc1.IpAddr == fc1.IpAddr{
 			return
 		}
-
 		fc3:=&FlowControl{}
 		*fc3=*fc2
-
 		*fc2=*fc1
-
 		ret = fc3
-
 		return
 	})
 	if err!=nil{
@@ -413,6 +403,7 @@ func (fcl *FCList)AcceptByIP(appID,ipAddr string) error  {
 			}
 		}
 	}
+	f.Close()
 
 	if upmacaddr == ""{
 		return  errors.New("Client not found")

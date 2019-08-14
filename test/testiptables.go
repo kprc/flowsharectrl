@@ -32,11 +32,7 @@ func main()  {
 
 	//control.GetFCListInst().Accept("abcdefghijklmnopqrst","11:22:33:44:55")
 
-	fclc:=&config.FCLConfig{}
-	if _,err:=fclc.Load();err!=nil{
-		fclc.InitFCLConfig("","",true)
-		fclc.Save()
-	}
+	config.GetConfigInstanceByParam("wlan0","ppp0",true)
 
 	fcl:=control.GetFCListInst()
 	fcl.Accept("aaa","a0:88:b4:a3:d7:ac","172.168.100.171")
