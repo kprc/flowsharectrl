@@ -24,7 +24,7 @@ var (
 )
 
 func newIptDb() *IptDb {
-	curdir,err:=os.Getwd()
+	curdir,err:=tools.Home()
 	if err!=nil{
 		log.Fatal("Can't get current directory")
 		os.Exit(1)

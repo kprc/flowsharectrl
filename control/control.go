@@ -98,7 +98,6 @@ func GetFCListInst() FCInter  {
 		if fcListInst == nil{
 			fcListInst = newFCList()
 		}
-
 	}
 
 	return fcListInst
@@ -170,8 +169,6 @@ func (fcl *FCList)applyAppendWithoutLock(fc *FlowControl) error    {
 			}
 		}
 	}
-
-
 	return err
 }
 
@@ -220,7 +217,6 @@ func (fcl *FCList)initApply()  {
 			if err!=nil{
 				fmt.Println(err)
 			}
-
 		}
 		if strings.TrimSpace(dftrule[2]) == "-P"{
 			err:=fcl.tbl.ChangePolicy(dftrule[1],dftrule[3],strings.Join(dftrule[4:]," "))
@@ -253,7 +249,6 @@ func (fcl *FCList)initApplyTbl()  {
 		if err==nil{
 			for _,chain:=range chains{
 				fcl.tbl.ClearChain(tblname,chain)
-				//fmt.Println("clear chain==>",tblname,chain)
 			}
 		}
 	}
@@ -263,7 +258,6 @@ func (fcl *FCList)initApplyTbl()  {
 			for _,chain:=range chains{
 				if _,ok:=gIPTDftChainNames[chain];!ok{
 					fcl.tbl.DeleteChain(tblname,chain)
-					//fmt.Println("delete chain==>",tblname,chain)
 				}
 			}
 		}
@@ -277,13 +271,11 @@ func (fcl *FCList)initApplyTbl()  {
 	}
 	fcl.initApply()
 
-	//fmt.Println("save2file: ",fcl.cfg.Save2File)
 	if fcl.cfg.Save2File {
 		fcl.recover()
 	}
 
 	GetIPTDBInstant().Save()
-
 }
 
 func (fcl *FCList)initIPTL()  {
@@ -311,7 +303,6 @@ func (fcl *FCList)recover()  {
 		if k=="" || fc == nil{
 			break
 		}
-		//fmt.Println(fc.AppId,fc.MacAddr,fc.IpAddr)
 		fcl.AddValue(fc)
 		fcl.applyAppendWithoutLock(fc)
 	}
@@ -387,7 +378,6 @@ func (fcl *FCList)AcceptByIP(appID,ipAddr string) error  {
 			}
 
 			if len(line) > 0 {
-				//pending drop it
 				return errors.New("Reading pending")
 			}
 		}else{
@@ -436,7 +426,6 @@ func (fcl *FCList)AcceptByMac(appID,macAddr string) error {
 			}
 
 			if len(line) > 0 {
-				//pending drop it
 				return errors.New("Reading pending")
 			}
 		}else{
@@ -477,7 +466,6 @@ func (fcl *FCList)Deny(appID string)  {
 
 	iptbldb:=GetIPTDBInstant()
 	iptbldb.DBDel(appID)
-
 }
 
 func (fcl *FCList)GetUpBytes(appID string) uint64  {
@@ -514,7 +502,6 @@ func (fcl *FCList)GetDownBytes(appID string) uint64  {
 
 	bytecnt:=fcl.getDownByes(r.(*FlowControl).IpAddr)
 	r.(*FlowControl).DownBytes = bytecnt
-
 
 	return bytecnt
 }

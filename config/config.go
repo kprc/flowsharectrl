@@ -34,8 +34,16 @@ var (
 
 func GetConfigInstance() *FCLConfig  {
 	if fclConfigInst == nil{
-		log.Fatal("Please Initialize the Config")
-		return nil
+		fclConfigInstLock.Lock()
+		defer fclConfigInstLock.Unlock()
+		if fclConfigInst == nil{
+			fc:=&FCLConfig{}
+			if _,err:=fc.Load();err!=nil{
+				log.Fatal("Please Initialize first")
+				return nil
+			}
+			fclConfigInst =fc
+		}
 	}
 	return fclConfigInst
 }

@@ -27,11 +27,7 @@ var stopCmd = &cobra.Command{
 	Short: "stop a nbsfc daemon",
 	Long: `stop a nbsfc daemon`,
 	Run: func(cmd *cobra.Command, args []string) {
-		cfg :=&config.FCLConfig{}
-		if _,err:=cfg.Load();err!=nil{
-			log.Println("Please Initialize First")
-			return
-		}
+		cfg :=config.GetConfigInstance()
 
 		if !tools.CheckPortUsed("tcp",uint16(cfg.CmdListenPort)){
 			log.Println("nbsfc not started")
