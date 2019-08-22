@@ -475,6 +475,8 @@ func (fcl *FCList)Deny(appID string)  {
 //    {appid,ipaddr,macaddr},
 // }
 func (fcl *FCList)ListFCS() [][]string {
+	fcl.listrwlock.Lock()
+	defer fcl.listrwlock.Unlock()
 	cursor:=fcl.ListIterator(0)
 	ret:=make([][]string,0)
 	for{
