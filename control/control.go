@@ -40,8 +40,9 @@ type FCInter interface {
 	AcceptByMac(appID,macAddr string) error
 	AcceptByIP(appID,ipAddr string) error
 	Deny(appID string)
-	GetUpBytes(appID string) uint64
-	GetDownBytes(appID string) uint64
+	ListFCS() [][]string
+	GetUpBytes(appID string) (uint64,error)
+	GetDownBytes(appID string) (uint64,error)
 }
 
 type KeyInter interface {
@@ -321,7 +322,7 @@ func (fcl *FCList)Accept(appID,macAddr,ipAddr string) error  {
 	r,err:=fcl.FindDo(fc, func(arg interface{}, v interface{}) (ret interface{}, err error) {
 		fc1:=arg.(*FlowControl)
 		fc2:=v.(*FlowControl)
-		if fc1.MacAddr == fc2.MacAddr && fc1.IpAddr == fc1.IpAddr{
+		if fc1.MacAddr == fc2.MacAddr && fc1.IpAddr == fc2.IpAddr{
 			return
 		}
 		fc3:=&FlowControl{}
@@ -444,7 +445,7 @@ func (fcl *FCList)AcceptByMac(appID,macAddr string) error {
 	if ipaddr == ""{
 		return  errors.New("Client not found")
 	}
-	return fcl.Accept(macAddr,lomacaddr,ipaddr)
+	return fcl.Accept(appID,lomacaddr,ipaddr)
 }
 
 
@@ -468,7 +469,29 @@ func (fcl *FCList)Deny(appID string)  {
 	iptbldb.DBDel(appID)
 }
 
-func (fcl *FCList)GetUpBytes(appID string) uint64  {
+//return value
+// [][]string{
+//    {appid,ipaddr,macaddr},
+//    {appid,ipaddr,macaddr},
+// }
+func (fcl *FCList)ListFCS() [][]string {
+	cursor:=fcl.ListIterator(0)
+	ret:=make([][]string,0)
+	for{
+		fcinter:=cursor.Next()
+		if fcinter == nil{
+			break
+		}
+		fc:=fcinter.(*FlowControl)
+		fcs:=make([]string,0)
+		fcs = append(fcs,fc.AppId,fc.IpAddr,fc.MacAddr)
+		ret = append(ret,fcs)
+	}
+
+	return ret
+}
+
+func (fcl *FCList)GetUpBytes(appID string) (uint64,error)  {
 
 	fcl.listrwlock.Lock()
 	defer fcl.listrwlock.Unlock()
@@ -477,17 +500,17 @@ func (fcl *FCList)GetUpBytes(appID string) uint64  {
 	})
 
 	if err!=nil{
-		return 0
+		return 0,err
 	}
 
 	bytecnt:=fcl.getUPBytes(r.(*FlowControl).MacAddr)
 	r.(*FlowControl).UpBytes = bytecnt
 
 
-	return bytecnt
+	return bytecnt,nil
 }
 
-func (fcl *FCList)GetDownBytes(appID string) uint64  {
+func (fcl *FCList)GetDownBytes(appID string) (uint64,error)  {
 
 	fcl.listrwlock.Lock()
 	defer fcl.listrwlock.Unlock()
@@ -497,12 +520,12 @@ func (fcl *FCList)GetDownBytes(appID string) uint64  {
 	})
 
 	if err!=nil{
-		return 0
+		return 0,err
 	}
 
 	bytecnt:=fcl.getDownByes(r.(*FlowControl).IpAddr)
 	r.(*FlowControl).DownBytes = bytecnt
 
-	return bytecnt
+	return bytecnt,nil
 }
 
