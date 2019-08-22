@@ -5,11 +5,11 @@ import (
 	"log"
 	"strings"
 	"net"
-	"github.com/kprc/nbsnetwork/tools"
+	"sync"
 	"path"
 	"encoding/json"
 	"github.com/pkg/errors"
-	"sync"
+	"github.com/kprc/nbsnetwork/tools"
 )
 
 type FCLConfig struct {

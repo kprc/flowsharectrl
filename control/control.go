@@ -1,17 +1,17 @@
 package control
 
 import (
-	"github.com/kprc/nbsnetwork/common/list"
-	"sync"
-	"github.com/coreos/go-iptables/iptables"
-	"log"
-	"github.com/kprc/flowsharectrl/config"
 	"strings"
 	"os"
 	"bufio"
 	"io"
-	"github.com/pkg/errors"
+	"sync"
+	"log"
 	"fmt"
+	"github.com/kprc/nbsnetwork/common/list"
+	"github.com/coreos/go-iptables/iptables"
+	"github.com/kprc/flowsharectrl/config"
+	"github.com/pkg/errors"
 )
 
 type FlowControl struct {
