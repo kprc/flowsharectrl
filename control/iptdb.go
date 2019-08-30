@@ -1,7 +1,7 @@
 package control
 
 import (
-	"github.com/rickeyliao/ServiceAgent/db"
+	"github.com/kprc/nbsnetwork/db"
 	"os"
 	"log"
 	"path"
