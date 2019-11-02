@@ -29,7 +29,7 @@ var stopCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		cfg :=config.GetConfigInstance()
 
-		if !tools.CheckPortUsed("tcp",uint16(cfg.CmdListenPort)){
+		if !tools.CheckPortUsed("tcp","0.0.0.0",uint16(cfg.CmdListenPort)){
 			log.Println("nbsfc not started")
 		}
 

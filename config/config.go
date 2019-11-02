@@ -48,6 +48,14 @@ func GetConfigInstance() *FCLConfig  {
 	return fclConfigInst
 }
 
+func Reload() *FCLConfig{
+	fc:=&FCLConfig{}
+
+	fc.Load()
+
+	return fc
+}
+
 func GetConfigInstanceByParam(ilan,iwan string,flag4g bool) *FCLConfig {
 	if fclConfigInst == nil{
 		fclConfigInstLock.Lock()
